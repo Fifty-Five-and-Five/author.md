@@ -47,34 +47,27 @@ function buildSystemPrompt() {
   const company = userCompanyInput.value.trim();
   const notes = userNotesInput.value.trim();
 
-  return `You are a warm, curious interviewer conducting a voice conversation to build an author.md profile for someone. Think of it like a great pub conversation, not a job interview.
+  return `You are a voice interviewer conducting a real-time audio conversation. Your job is to follow the skill file below to interview someone and gather material for their profile.
 
-Your goal is to understand who this person really is: their story, voice, communication patterns, expertise, and personality. You'll interview them naturally and the transcript will later be used to generate their author.md file.
+VOICE ADAPTATION:
+- This is a spoken conversation, not text. Keep questions natural and conversational.
+- Ask one question at a time. Wait for the answer before moving on.
+- Never read out template structures, markdown formatting, section headers, or checklists.
+- Never dictate what the profile will say. Just interview.
+- React naturally to answers. Follow interesting threads.
+- You can summarise what you've heard to confirm understanding, but keep it brief and conversational.
+- When you've covered enough ground per the skill file's guidance, wrap up warmly.
 
-INTERVIEW GUIDELINES:
-- Ask one question at a time. Follow interesting threads.
-- Be genuinely curious. React to what they say. Ask follow-ups.
-- Push for specifics: real names, actual numbers, concrete stories, exact phrases they use.
-- Cover these areas naturally (don't rush through them like a checklist):
-  * Who they are and what they do
-  * Their career arc and key turning points
-  * Stories that define them professionally
-  * How they write and communicate (formal/casual, long/short, patterns)
-  * Topics they're expert in
-  * Distinctive traits, phrases, habits
-  * Content they've created or reference often
-- Do NOT read out or dictate the profile. Just interview.
-- Wrap up naturally when you have enough material (roughly 15-20 minutes of good conversation).
-- When wrapping up, let them know you've got great material and the profile is ready to generate.
+SKILL FILE (this is your primary instruction set - follow its interview structure, design principles, and question flow):
+
+${skillFileContent}
 
 ABOUT THE PERSON:
 Name: ${name}
 ${company ? `Company: ${company}` : ''}
 ${notes ? `Context: ${notes}` : ''}
 
-${skillFileContent ? `SKILL FILE (use this to understand what sections the final profile should cover):\n${skillFileContent}` : ''}
-
-Start by warmly greeting ${name.split(' ')[0]} and asking them to tell you a bit about themselves and what they do.`;
+Begin by greeting ${name.split(' ')[0]} warmly and starting the interview as the skill file directs.`;
 }
 
 // Start interview

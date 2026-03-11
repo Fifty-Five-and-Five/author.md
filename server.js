@@ -71,24 +71,23 @@ app.post('/api/token', requireAuth, async (req, res) => {
 app.post('/api/generate', requireAuth, async (req, res) => {
   const { transcript, skillFile, userName, userCompany, userNotes } = req.body;
 
-  const systemPrompt = `You are an expert at creating author.md files - portable personal profiles that tell AI tools about a person.
+  const systemPrompt = `You are generating an author profile from a voice interview transcript. The skill file below defines the exact profile template, section structure, and quality standards to follow.
 
-You've just conducted a voice interview. Using the transcript below, generate a comprehensive author.md file.
+INSTRUCTIONS:
+- Follow the skill file's profile template exactly - use its section headings, structure, and role descriptions.
+- Map the transcript to profile sections as the skill file directs.
+- Be specific: use actual quotes, real names, concrete details from the interview. Never be generic.
+- If the skill file defines a quality checklist, note any sections that are thin or missing at the end.
+- Write in markdown.
 
-The author.md should capture:
-- Who this person is (name, role, background)
-- Their career arc and key stories
-- How they write and communicate (voice, tone, patterns, characteristic phrases)
-- Their expertise and topics they own
-- Writing dos and don'ts based on how they actually speak
-- Reference content if mentioned
+SKILL FILE (follow its generate/profile template instructions):
 
-${skillFile ? `Use this skill file as a structural guide for what sections to include:\n\n${skillFile}\n\n` : ''}
+${skillFile || 'No skill file provided. Generate a comprehensive author profile covering: identity, career arc, communication style, expertise, writing patterns, and characteristic phrases.'}
+
+ABOUT THE PERSON:
 ${userName ? `Name: ${userName}` : ''}
 ${userCompany ? `Company: ${userCompany}` : ''}
-${userNotes ? `Additional context: ${userNotes}` : ''}
-
-Write the author.md in markdown. Be specific - use actual quotes, real examples, and concrete details from the interview. Don't be generic. The profile should feel like THIS person, not anyone.`;
+${userNotes ? `Context: ${userNotes}` : ''}`;
 
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
