@@ -16,22 +16,17 @@
 
       <div class="sidebar-section">
         <h3>Skill file</h3>
-        <div class="file-upload" id="file-upload">
+        <div class="file-upload" id="skill-upload">
           <input type="file" id="skill-file" accept=".md,.txt">
-          <div class="label">Drop <strong>.md file</strong> or click to upload</div>
+          <div class="label">Drop <strong>skill .md</strong> or click</div>
         </div>
       </div>
 
       <div class="sidebar-section">
-        <h3>About you</h3>
-        <div class="form-group">
-          <input type="text" id="user-name" placeholder="Your name">
-        </div>
-        <div class="form-group">
-          <input type="text" id="user-company" placeholder="Company (optional)">
-        </div>
-        <div class="form-group">
-          <textarea id="user-notes" placeholder="Anything the interviewer should know..."></textarea>
+        <h3>Research file</h3>
+        <div class="file-upload" id="research-upload">
+          <input type="file" id="research-file" accept=".md,.txt">
+          <div class="label">Drop <strong>research .md</strong> or click</div>
         </div>
       </div>
 
@@ -47,7 +42,7 @@
       <div class="orb-container">
         <canvas id="orb" width="800" height="800"></canvas>
       </div>
-      <div class="status-label" id="status">Upload a skill file and enter your name to begin</div>
+      <div class="status-label" id="status">Upload a skill file and research file to begin</div>
       <div class="controls">
         <button class="btn btn-primary" id="btn-start" disabled>Start interview</button>
         <button class="btn btn-ghost" id="btn-end" style="display:none">End &amp; generate</button>

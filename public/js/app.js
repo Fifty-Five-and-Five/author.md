@@ -6,10 +6,9 @@ const btnEnd = document.getElementById('btn-end');
 const statusEl = document.getElementById('status');
 const transcriptEl = document.getElementById('transcript');
 const skillFileInput = document.getElementById('skill-file');
-const fileUploadEl = document.getElementById('file-upload');
-const userNameInput = document.getElementById('user-name');
-const userCompanyInput = document.getElementById('user-company');
-const userNotesInput = document.getElementById('user-notes');
+const skillUploadEl = document.getElementById('skill-upload');
+const researchFileInput = document.getElementById('research-file');
+const researchUploadEl = document.getElementById('research-upload');
 const resultOverlay = document.getElementById('result-overlay');
 const resultContent = document.getElementById('result-content');
 const btnDownload = document.getElementById('btn-download');
@@ -17,6 +16,7 @@ const btnCloseResult = document.getElementById('btn-close-result');
 
 let session = null;
 let skillFileContent = '';
+let researchFileContent = '';
 let transcript = [];
 let generatedContent = '';
 
@@ -25,29 +25,36 @@ skillFileInput.addEventListener('change', async (e) => {
   const file = e.target.files[0];
   if (!file) return;
   skillFileContent = await file.text();
-  fileUploadEl.classList.add('has-file');
-  fileUploadEl.querySelector('.label').innerHTML = `<strong>${file.name}</strong> loaded`;
+  skillUploadEl.classList.add('has-file');
+  skillUploadEl.querySelector('.label').innerHTML = `<strong>${file.name}</strong> loaded`;
   checkReady();
 });
 
-// Name input
-userNameInput.addEventListener('input', checkReady);
+// Research file upload (required)
+researchFileInput.addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  researchFileContent = await file.text();
+  researchUploadEl.classList.add('has-file');
+  researchUploadEl.querySelector('.label').innerHTML = `<strong>${file.name}</strong> loaded`;
+  checkReady();
+});
 
 function checkReady() {
-  const ready = skillFileContent && userNameInput.value.trim();
+  const ready = skillFileContent && researchFileContent;
   btnStart.disabled = !ready;
   if (ready) {
-    statusEl.textContent = 'Ready to start the interview';
+    statusEl.textContent = 'Ready — skill and research loaded';
+  } else if (skillFileContent) {
+    statusEl.textContent = 'Now upload the research file';
+  } else if (researchFileContent) {
+    statusEl.textContent = 'Now upload the skill file';
   }
 }
 
 // Build system prompt
 function buildSystemPrompt() {
-  const name = userNameInput.value.trim();
-  const company = userCompanyInput.value.trim();
-  const notes = userNotesInput.value.trim();
-
-  return `You are a voice interviewer conducting a real-time audio conversation. Your job is to follow the skill file below to interview someone and gather material for their profile.
+  return `You are a voice interviewer conducting a real-time audio conversation. Your job is to follow the skill file below to interview someone and gather material for their author profile.
 
 VOICE ADAPTATION:
 - This is a spoken conversation, not text. Keep questions natural and conversational.
@@ -62,12 +69,20 @@ SKILL FILE (this is your primary instruction set - follow its interview structur
 
 ${skillFileContent}
 
-ABOUT THE PERSON:
-Name: ${name}
-${company ? `Company: ${company}` : ''}
-${notes ? `Context: ${notes}` : ''}
+RESEARCH FILE (pre-gathered background on this person):
 
-Begin by greeting ${name.split(' ')[0]} warmly and starting the interview as the skill file directs.`;
+${researchFileContent}
+
+HOW TO USE THE RESEARCH:
+- The research gives you context — use it to greet the person by name, reference their role and company, and skip the basics.
+- Do NOT treat the research as a checklist of gaps to fill. The interview is the primary source of material, not a supplement to the research.
+- The research and interview combine to build a complete picture. The interview captures what research never can: stories, opinions, personality, how they think and speak.
+
+HOW TO BEGIN:
+- Greet the person by name.
+- Give a brief, friendly summary of what you already know about them from the research — their role, company, and one or two highlights. Keep it to 2-3 sentences.
+- Then ask: are they ready to get started?
+- Once they confirm, begin the interview as the skill file directs.`;
 }
 
 // Start interview
@@ -76,16 +91,13 @@ btnStart.addEventListener('click', async () => {
   statusEl.textContent = 'Connecting...';
 
   try {
-    // Get ephemeral token
     const tokenRes = await fetch('/api/token', { method: 'POST' });
     if (!tokenRes.ok) throw new Error('Failed to get token');
     const tokenData = await tokenRes.json();
 
-    // Clear transcript
     transcript = [];
     transcriptEl.innerHTML = '<div class="empty">Listening...</div>';
 
-    // Create session
     session = new RealtimeSession({
       onTranscript: (speaker, text) => {
         transcript.push({ speaker, text });
@@ -126,7 +138,6 @@ btnStart.addEventListener('click', async () => {
 btnEnd.addEventListener('click', async () => {
   if (!session) return;
 
-  // Disconnect voice
   session.disconnect();
   session = null;
   orb.setState('idle');
@@ -146,9 +157,7 @@ btnEnd.addEventListener('click', async () => {
       body: JSON.stringify({
         transcript: transcriptText,
         skillFile: skillFileContent,
-        userName: userNameInput.value.trim(),
-        userCompany: userCompanyInput.value.trim(),
-        userNotes: userNotesInput.value.trim(),
+        researchFile: researchFileContent,
       }),
     });
 

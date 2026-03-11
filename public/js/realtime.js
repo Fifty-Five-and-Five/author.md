@@ -57,11 +57,18 @@ class RealtimeSession {
           type: 'session.update',
           session: {
             instructions: systemPrompt,
-            input_audio_transcription: { model: 'gpt-4o-mini-transcribe' },
-            turn_detection: { type: 'server_vad' },
+            input_audio_transcription: { model: 'gpt-4o-mini-transcribe', language: 'en' },
+            turn_detection: {
+              type: 'server_vad',
+              threshold: 0.7,
+              prefix_padding_ms: 500,
+              silence_duration_ms: 800,
+            },
           },
         });
-        this.onStateChange('listening');
+        // Prompt the AI to speak first — greet the interviewee
+        this.send({ type: 'response.create' });
+        this.onStateChange('speaking');
       };
 
       this.dc.onmessage = (e) => {

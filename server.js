@@ -6,7 +6,7 @@ const path = require('path');
 const app = express();
 const PORT = 6767;
 const PASSWORD = 'Pass@word1!';
-const SESSION_SECRET = 'author-md-' + Date.now();
+const SESSION_SECRET = 'author-md-fixed-session-key';
 
 // Read OpenAI key
 const keyPath = path.join(process.env.HOME, '.config/openai/key');
@@ -51,7 +51,7 @@ app.post('/api/token', requireAuth, async (req, res) => {
         model: 'gpt-4o-realtime-preview',
         voice: 'sage',
         modalities: ['audio', 'text'],
-        input_audio_transcription: { model: 'gpt-4o-mini-transcribe' },
+        input_audio_transcription: { model: 'gpt-4o-mini-transcribe', language: 'en' },
       }),
     });
     if (!response.ok) {
@@ -69,7 +69,7 @@ app.post('/api/token', requireAuth, async (req, res) => {
 
 // Generate author.md from transcript
 app.post('/api/generate', requireAuth, async (req, res) => {
-  const { transcript, skillFile, userName, userCompany, userNotes } = req.body;
+  const { transcript, skillFile, researchFile } = req.body;
 
   const systemPrompt = `You are generating an author profile from a voice interview transcript. The skill file below defines the exact profile template, section structure, and quality standards to follow.
 
@@ -78,16 +78,18 @@ INSTRUCTIONS:
 - Map the transcript to profile sections as the skill file directs.
 - Be specific: use actual quotes, real names, concrete details from the interview. Never be generic.
 - If the skill file defines a quality checklist, note any sections that are thin or missing at the end.
+- The interview is the primary source. The research provides supporting factual context (career history, credentials, published content). Combine both to build the fullest picture.
 - Write in markdown.
 
 SKILL FILE (follow its generate/profile template instructions):
 
 ${skillFile || 'No skill file provided. Generate a comprehensive author profile covering: identity, career arc, communication style, expertise, writing patterns, and characteristic phrases.'}
 
-ABOUT THE PERSON:
-${userName ? `Name: ${userName}` : ''}
-${userCompany ? `Company: ${userCompany}` : ''}
-${userNotes ? `Context: ${userNotes}` : ''}`;
+${researchFile ? `RESEARCH FILE (pre-gathered background on this person):\n\n${researchFile}` : ''}
+
+Generate the profile from the transcript and research.`;
+
+  console.log(`Generating profile, transcript length: ${(transcript || '').length} chars`);
 
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -100,7 +102,7 @@ ${userNotes ? `Context: ${userNotes}` : ''}`;
         model: 'gpt-4o',
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: `Here is the interview transcript:\n\n${transcript}` },
+          { role: 'user', content: `Here is the interview transcript:\n\n${transcript || '(empty transcript)'}` },
         ],
         temperature: 0.7,
         max_tokens: 4000,
@@ -108,7 +110,7 @@ ${userNotes ? `Context: ${userNotes}` : ''}`;
     });
     if (!response.ok) {
       const err = await response.text();
-      console.error('Generate error:', err);
+      console.error('Generate error:', response.status, err);
       return res.status(response.status).json({ error: err });
     }
     const data = await response.json();
