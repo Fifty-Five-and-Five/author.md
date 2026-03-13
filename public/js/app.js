@@ -14,11 +14,19 @@ const resultContent = document.getElementById('result-content');
 const btnDownload = document.getElementById('btn-download');
 const btnCloseResult = document.getElementById('btn-close-result');
 
+const progressSection = document.getElementById('progress-section');
+const progressSteps = document.querySelectorAll('.progress-step');
+
 let session = null;
 let skillFileContent = '';
 let researchFileContent = '';
 let transcript = [];
-let generatedContent = '';
+let transcriptText = '';
+let aiTurnCount = 0;
+
+// Map AI turn ranges to interview sections (0-indexed step)
+// Approximate: intro, personal details, what you do, core traits, career, stories, topics, voice
+const sectionThresholds = [1, 3, 7, 10, 15, 19, 25, 28];
 
 // Skill file upload
 skillFileInput.addEventListener('change', async (e) => {
@@ -56,16 +64,29 @@ function checkReady() {
 function buildSystemPrompt() {
   return `You are a voice interviewer conducting a real-time audio conversation. Your job is to follow the skill file below to interview someone and gather material for their author profile.
 
+LANGUAGE:
+- Always conduct the interview in English. All your questions and responses must be in English.
+- If the interviewee responds in another language, politely continue in English.
+
 VOICE ADAPTATION:
 - This is a spoken conversation, not text. Keep questions natural and conversational.
 - Ask one question at a time. Wait for the answer before moving on.
 - Never read out template structures, markdown formatting, section headers, or checklists.
 - Never dictate what the profile will say. Just interview.
 - React naturally to answers. Follow interesting threads.
-- You can summarise what you've heard to confirm understanding, but keep it brief and conversational.
 - When you've covered enough ground per the skill file's guidance, wrap up warmly.
 
-SKILL FILE (this is your primary instruction set - follow its interview structure, design principles, and question flow):
+WHAT TO FOCUS ON IN THE SKILL FILE:
+- Your job is the INTERVIEW only — the sections labelled "Section 1" through "Section 7" and their questions (Q1-Q18).
+- IGNORE everything about profile generation, templates, mapping tables, quality checklists, and the "generate" sub-command. That work happens later in a separate tool. You do not need to think about how answers map to profile sections.
+- Follow the Design Principles and question flow. Use the follow-up prompts when answers are thin.
+
+INTERVIEW FLOW:
+- Work through the sections in order. After each section, briefly summarise what you heard back to the interviewee to confirm it before moving on. Keep summaries conversational and short — two or three sentences.
+- If the interviewee naturally brings up something relevant to a section you've already covered, acknowledge it and capture the new detail. But only revisit a previous topic once — after that, note it and move forward.
+- Do not loop back to fill gaps. Trust that the material you've gathered is enough. A separate tool will handle any gaps later.
+
+SKILL FILE:
 
 ${skillFileContent}
 
@@ -96,12 +117,19 @@ btnStart.addEventListener('click', async () => {
     const tokenData = await tokenRes.json();
 
     transcript = [];
+    aiTurnCount = 0;
     transcriptEl.innerHTML = '<div class="empty">Listening...</div>';
+    progressSection.style.display = '';
+    resetProgress();
 
     session = new RealtimeSession({
       onTranscript: (speaker, text) => {
         transcript.push({ speaker, text });
         addTranscriptEntry(speaker, text);
+        if (speaker === 'ai') {
+          aiTurnCount++;
+          updateProgress();
+        }
       },
       onStateChange: (state) => {
         orb.setState(state);
@@ -134,8 +162,8 @@ btnStart.addEventListener('click', async () => {
   }
 });
 
-// End interview and generate
-btnEnd.addEventListener('click', async () => {
+// End interview and show transcript
+btnEnd.addEventListener('click', () => {
   if (!session) return;
 
   session.disconnect();
@@ -143,50 +171,26 @@ btnEnd.addEventListener('click', async () => {
   orb.setState('idle');
   orb.setAudioLevel(0);
 
-  btnEnd.disabled = true;
-  statusEl.innerHTML = '<span class="spinner"></span> Generating your author.md...';
+  transcriptText = transcript
+    .map(e => `${e.speaker === 'ai' ? 'Interviewer' : 'Interviewee'}: ${e.text}`)
+    .join('\n\n');
 
-  try {
-    const transcriptText = transcript
-      .map(e => `${e.speaker === 'ai' ? 'Interviewer' : 'Interviewee'}: ${e.text}`)
-      .join('\n\n');
-
-    const res = await fetch('/api/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        transcript: transcriptText,
-        skillFile: skillFileContent,
-        researchFile: researchFileContent,
-      }),
-    });
-
-    if (!res.ok) throw new Error('Generation failed');
-    const data = await res.json();
-    generatedContent = data.content;
-
-    resultContent.textContent = generatedContent;
-    resultOverlay.classList.add('visible');
-    statusEl.textContent = 'Profile generated!';
-
-  } catch (err) {
-    console.error(err);
-    statusEl.textContent = `Error: ${err.message}`;
-  }
+  resultContent.textContent = transcriptText;
+  resultOverlay.classList.add('visible');
+  statusEl.textContent = 'Interview complete — download your transcript';
 
   btnEnd.style.display = 'none';
   btnStart.style.display = 'inline-flex';
   btnStart.disabled = false;
-  btnEnd.disabled = false;
 });
 
-// Download
+// Download transcript
 btnDownload.addEventListener('click', () => {
-  const blob = new Blob([generatedContent], { type: 'text/markdown' });
+  const blob = new Blob([transcriptText], { type: 'text/markdown' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'author.md';
+  a.download = 'interview-transcript.md';
   a.click();
   URL.revokeObjectURL(url);
 });
@@ -195,6 +199,26 @@ btnDownload.addEventListener('click', () => {
 btnCloseResult.addEventListener('click', () => {
   resultOverlay.classList.remove('visible');
 });
+
+// Progress tracking
+function updateProgress() {
+  let currentStep = 0;
+  for (let i = sectionThresholds.length - 1; i >= 0; i--) {
+    if (aiTurnCount >= sectionThresholds[i]) {
+      currentStep = i;
+      break;
+    }
+  }
+  progressSteps.forEach((el, i) => {
+    el.classList.remove('active', 'done');
+    if (i < currentStep) el.classList.add('done');
+    else if (i === currentStep) el.classList.add('active');
+  });
+}
+
+function resetProgress() {
+  progressSteps.forEach(el => el.classList.remove('active', 'done'));
+}
 
 // Add transcript entry
 function addTranscriptEntry(speaker, text) {
