@@ -274,6 +274,51 @@ body {
   padding: 2rem 0;
 }
 
+/* Progress tracker */
+.progress-tracker {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.progress-step {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.8rem;
+  color: #bbb;
+  padding: 0.35rem 0;
+  position: relative;
+  transition: color 0.3s;
+}
+
+.progress-step .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--stone);
+  flex-shrink: 0;
+  transition: background 0.3s, box-shadow 0.3s;
+}
+
+.progress-step.done {
+  color: var(--black);
+}
+
+.progress-step.done .dot {
+  background: var(--orange);
+}
+
+.progress-step.active {
+  color: var(--black);
+  font-weight: 600;
+}
+
+.progress-step.active .dot {
+  background: var(--orange);
+  box-shadow: 0 0 0 3px var(--orange-20);
+}
+
 /* Main area */
 .main-area {
   display: flex;

@@ -14,11 +14,19 @@ const resultContent = document.getElementById('result-content');
 const btnDownload = document.getElementById('btn-download');
 const btnCloseResult = document.getElementById('btn-close-result');
 
+const progressSection = document.getElementById('progress-section');
+const progressSteps = document.querySelectorAll('.progress-step');
+
 let session = null;
 let skillFileContent = '';
 let researchFileContent = '';
 let transcript = [];
 let transcriptText = '';
+let aiTurnCount = 0;
+
+// Map AI turn ranges to interview sections (0-indexed step)
+// Approximate: intro, personal details, what you do, core traits, career, stories, topics, voice
+const sectionThresholds = [1, 3, 7, 10, 15, 19, 25, 28];
 
 // Skill file upload
 skillFileInput.addEventListener('change', async (e) => {
@@ -96,12 +104,19 @@ btnStart.addEventListener('click', async () => {
     const tokenData = await tokenRes.json();
 
     transcript = [];
+    aiTurnCount = 0;
     transcriptEl.innerHTML = '<div class="empty">Listening...</div>';
+    progressSection.style.display = '';
+    resetProgress();
 
     session = new RealtimeSession({
       onTranscript: (speaker, text) => {
         transcript.push({ speaker, text });
         addTranscriptEntry(speaker, text);
+        if (speaker === 'ai') {
+          aiTurnCount++;
+          updateProgress();
+        }
       },
       onStateChange: (state) => {
         orb.setState(state);
@@ -171,6 +186,26 @@ btnDownload.addEventListener('click', () => {
 btnCloseResult.addEventListener('click', () => {
   resultOverlay.classList.remove('visible');
 });
+
+// Progress tracking
+function updateProgress() {
+  let currentStep = 0;
+  for (let i = sectionThresholds.length - 1; i >= 0; i--) {
+    if (aiTurnCount >= sectionThresholds[i]) {
+      currentStep = i;
+      break;
+    }
+  }
+  progressSteps.forEach((el, i) => {
+    el.classList.remove('active', 'done');
+    if (i < currentStep) el.classList.add('done');
+    else if (i === currentStep) el.classList.add('active');
+  });
+}
+
+function resetProgress() {
+  progressSteps.forEach(el => el.classList.remove('active', 'done'));
+}
 
 // Add transcript entry
 function addTranscriptEntry(speaker, text) {
