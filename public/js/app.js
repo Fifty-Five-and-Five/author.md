@@ -18,7 +18,7 @@ let session = null;
 let skillFileContent = '';
 let researchFileContent = '';
 let transcript = [];
-let generatedContent = '';
+let transcriptText = '';
 
 // Skill file upload
 skillFileInput.addEventListener('change', async (e) => {
@@ -134,8 +134,8 @@ btnStart.addEventListener('click', async () => {
   }
 });
 
-// End interview and generate
-btnEnd.addEventListener('click', async () => {
+// End interview and show transcript
+btnEnd.addEventListener('click', () => {
   if (!session) return;
 
   session.disconnect();
@@ -143,50 +143,26 @@ btnEnd.addEventListener('click', async () => {
   orb.setState('idle');
   orb.setAudioLevel(0);
 
-  btnEnd.disabled = true;
-  statusEl.innerHTML = '<span class="spinner"></span> Generating your author.md...';
+  transcriptText = transcript
+    .map(e => `${e.speaker === 'ai' ? 'Interviewer' : 'Interviewee'}: ${e.text}`)
+    .join('\n\n');
 
-  try {
-    const transcriptText = transcript
-      .map(e => `${e.speaker === 'ai' ? 'Interviewer' : 'Interviewee'}: ${e.text}`)
-      .join('\n\n');
-
-    const res = await fetch('/api/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        transcript: transcriptText,
-        skillFile: skillFileContent,
-        researchFile: researchFileContent,
-      }),
-    });
-
-    if (!res.ok) throw new Error('Generation failed');
-    const data = await res.json();
-    generatedContent = data.content;
-
-    resultContent.textContent = generatedContent;
-    resultOverlay.classList.add('visible');
-    statusEl.textContent = 'Profile generated!';
-
-  } catch (err) {
-    console.error(err);
-    statusEl.textContent = `Error: ${err.message}`;
-  }
+  resultContent.textContent = transcriptText;
+  resultOverlay.classList.add('visible');
+  statusEl.textContent = 'Interview complete — download your transcript';
 
   btnEnd.style.display = 'none';
   btnStart.style.display = 'inline-flex';
   btnStart.disabled = false;
-  btnEnd.disabled = false;
 });
 
-// Download
+// Download transcript
 btnDownload.addEventListener('click', () => {
-  const blob = new Blob([generatedContent], { type: 'text/markdown' });
+  const blob = new Blob([transcriptText], { type: 'text/markdown' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'author.md';
+  a.download = 'interview-transcript.md';
   a.click();
   URL.revokeObjectURL(url);
 });
