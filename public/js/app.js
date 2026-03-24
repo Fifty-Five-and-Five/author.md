@@ -14,6 +14,7 @@ const resultContent = document.getElementById('result-content');
 const btnDownload = document.getElementById('btn-download');
 const btnCloseResult = document.getElementById('btn-close-result');
 
+const infoBox = document.getElementById('info-box');
 const progressSection = document.getElementById('progress-section');
 const progressSteps = document.querySelectorAll('.progress-step');
 const timerDisplay = document.getElementById('timer-display');
@@ -237,6 +238,7 @@ btnStart.addEventListener('click', async () => {
     aiTurnCount = 0;
     lastReminderAtTurn = 0;
     transcriptEl.innerHTML = '<div class="empty">Listening...</div>';
+    infoBox.style.display = 'none';
     progressSection.style.display = '';
     resetProgress();
     startTimer();
